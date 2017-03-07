@@ -118,14 +118,14 @@ Address HandleScope::current_limit_address(Isolate* isolate) {
   return reinterpret_cast<Address>(&isolate->handle_scope_data()->limit);
 }
 
-
 CanonicalHandleScope::CanonicalHandleScope(Isolate* isolate)
-    : isolate_(isolate) {
+    : isolate_(isolate), zone_(isolate->allocator(), ZONE_NAME) {
   HandleScopeData* handle_scope_data = isolate_->handle_scope_data();
   prev_canonical_scope_ = handle_scope_data->canonical_scope;
   handle_scope_data->canonical_scope = this;
   root_index_map_ = new RootIndexMap(isolate);
-  identity_map_ = new IdentityMap<Object**>(isolate->heap(), &zone_);
+  identity_map_ = new IdentityMap<Object**, ZoneAllocationPolicy>(
+      isolate->heap(), ZoneAllocationPolicy(&zone_));
   canonical_level_ = handle_scope_data->level;
 }
 

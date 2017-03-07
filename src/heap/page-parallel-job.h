@@ -33,12 +33,20 @@ class Isolate;
 template <typename JobTraits>
 class PageParallelJob {
  public:
-  PageParallelJob(Heap* heap, CancelableTaskManager* cancelable_task_manager)
+  // PageParallelJob cannot dynamically create a semaphore because of a bug in
+  // glibc. See http://crbug.com/609249 and
+  // https://sourceware.org/bugzilla/show_bug.cgi?id=12674.
+  // The caller must provide a semaphore with value 0 and ensure that
+  // the lifetime of the semaphore is the same as the lifetime of the Isolate.
+  // It is guaranteed that the semaphore value will be 0 after Run() call.
+  PageParallelJob(Heap* heap, CancelableTaskManager* cancelable_task_manager,
+                  base::Semaphore* semaphore)
       : heap_(heap),
         cancelable_task_manager_(cancelable_task_manager),
         items_(nullptr),
         num_items_(0),
-        pending_tasks_(0) {}
+        num_tasks_(0),
+        pending_tasks_(semaphore) {}
 
   ~PageParallelJob() {
     Item* item = items_;
@@ -81,7 +89,7 @@ class PageParallelJob {
         start_index -= num_items_;
       }
       Task* task = new Task(heap_, items_, num_items_, start_index,
-                            &pending_tasks_, per_task_data_callback(i));
+                            pending_tasks_, per_task_data_callback(i));
       task_ids[i] = task->id();
       if (i > 0) {
         V8::GetCurrentPlatform()->CallOnBackgroundThread(
@@ -95,8 +103,9 @@ class PageParallelJob {
     delete main_task;
     // Wait for background tasks.
     for (int i = 0; i < num_tasks_; i++) {
-      if (!cancelable_task_manager_->TryAbort(task_ids[i])) {
-        pending_tasks_.Wait();
+      if (cancelable_task_manager_->TryAbort(task_ids[i]) !=
+          CancelableTaskManager::kTaskAborted) {
+        pending_tasks_->Wait();
       }
     }
     if (JobTraits::NeedSequentialFinalization) {
@@ -119,7 +128,7 @@ class PageParallelJob {
     Item(MemoryChunk* chunk, typename JobTraits::PerPageData data, Item* next)
         : chunk(chunk), state(kAvailable), data(data), next(next) {}
     MemoryChunk* chunk;
-    AtomicValue<ProcessingState> state;
+    base::AtomicValue<ProcessingState> state;
     typename JobTraits::PerPageData data;
     Item* next;
   };
@@ -176,7 +185,7 @@ class PageParallelJob {
   Item* items_;
   int num_items_;
   int num_tasks_;
-  base::Semaphore pending_tasks_;
+  base::Semaphore* pending_tasks_;
   DISALLOW_COPY_AND_ASSIGN(PageParallelJob);
 };
 

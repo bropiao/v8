@@ -3,45 +3,63 @@
 # all paths in here must match this assumption.
 
 vars = {
-  "git_url": "https://chromium.googlesource.com",
+  "chromium_url": "https://chromium.googlesource.com",
 }
 
 deps = {
-  "v8/build/gyp":
-    Var("git_url") + "/external/gyp.git" + "@" + "61259d585ce99d9de8b35188cd0025bdbcb58411",
+  "v8/build":
+    Var("chromium_url") + "/chromium/src/build.git" + "@" + "10e3929acb32dea61d43d1f39e974e7795329074",
+  "v8/tools/gyp":
+    Var("chromium_url") + "/external/gyp.git" + "@" + "e7079f0e0e14108ab0dba58728ff219637458563",
   "v8/third_party/icu":
-    Var("git_url") + "/chromium/deps/icu.git" + "@" + "6d3b55dfa17d9a597c064eeef7ceac18c73184b7",
+    Var("chromium_url") + "/chromium/deps/icu.git" + "@" + "450be73c9ee8ae29d43d4fdc82febb2a5f62bfb5",
+  "v8/third_party/instrumented_libraries":
+    Var("chromium_url") + "/chromium/src/third_party/instrumented_libraries.git" + "@" + "f68b0bb5676091db9078119f165739620655dff2",
   "v8/buildtools":
-    Var("git_url") + "/chromium/buildtools.git" + "@" + "7274f1c726640bce4cd4c4198e1ee62a0b29bb89",
+    Var("chromium_url") + "/chromium/buildtools.git" + "@" + "b3771b1935ea74c388b6fb1750e83f5d83b39dec",
   "v8/base/trace_event/common":
-    Var("git_url") + "/chromium/src/base/trace_event/common.git" + "@" + "e40c41030f44cbd5b6f54081436620f43c3bb08a",
+    Var("chromium_url") + "/chromium/src/base/trace_event/common.git" + "@" + "06294c8a4a6f744ef284cd63cfe54dbf61eea290",
+  "v8/third_party/jinja2":
+    Var("chromium_url") + "/chromium/src/third_party/jinja2.git" + "@" + "d34383206fa42d52faa10bb9931d6d538f3a57e0",
+  "v8/third_party/markupsafe":
+    Var("chromium_url") + "/chromium/src/third_party/markupsafe.git" + "@" + "8f45f5cfa0009d2a70589bcda0349b8cb2b72783",
   "v8/tools/swarming_client":
-    Var('git_url') + '/external/swarming.client.git' + '@' + "df6e95e7669883c8fe9ef956c69a544154701a49",
+    Var('chromium_url') + '/external/swarming.client.git' + '@' + "11e31afa5d330756ff87aa12064bb5d032896cb5",
   "v8/testing/gtest":
-    Var("git_url") + "/external/github.com/google/googletest.git" + "@" + "6f8a66431cb592dad629028a50b3dd418a408c87",
+    Var("chromium_url") + "/external/github.com/google/googletest.git" + "@" + "6f8a66431cb592dad629028a50b3dd418a408c87",
   "v8/testing/gmock":
-    Var("git_url") + "/external/googlemock.git" + "@" + "0421b6f358139f02e102c9c332ce19a33faf75be",
+    Var("chromium_url") + "/external/googlemock.git" + "@" + "0421b6f358139f02e102c9c332ce19a33faf75be",
   "v8/test/benchmarks/data":
-    Var("git_url") + "/v8/deps/third_party/benchmarks.git" + "@" + "05d7188267b4560491ff9155c5ee13e207ecd65f",
+    Var("chromium_url") + "/v8/deps/third_party/benchmarks.git" + "@" + "05d7188267b4560491ff9155c5ee13e207ecd65f",
   "v8/test/mozilla/data":
-    Var("git_url") + "/v8/deps/third_party/mozilla-tests.git" + "@" + "f6c578a10ea707b1a8ab0b88943fe5115ce2b9be",
-  "v8/test/simdjs/data": Var("git_url") + "/external/github.com/tc39/ecmascript_simd.git" + "@" + "c8ef63c728283debc25891123eb00482fee4b8cd",
+    Var("chromium_url") + "/v8/deps/third_party/mozilla-tests.git" + "@" + "f6c578a10ea707b1a8ab0b88943fe5115ce2b9be",
   "v8/test/test262/data":
-    Var("git_url") + "/external/github.com/tc39/test262.git" + "@" + "57d3e2216fa86ad63b6c0a54914ba9dcbff96003",
+    Var("chromium_url") + "/external/github.com/tc39/test262.git" + "@" + "a72ee6d91275aa6524e84a9b7070103411ef2689",
+  "v8/test/test262/harness":
+    Var("chromium_url") + "/external/github.com/test262-utils/test262-harness-py.git" + "@" + "0f2acdd882c84cff43b9d60df7574a1901e2cdcd",
   "v8/tools/clang":
-    Var("git_url") + "/chromium/src/tools/clang.git" + "@" + "c642451e861b9c568967fb8e4d9d3fd081699162",
+    Var("chromium_url") + "/chromium/src/tools/clang.git" + "@" + "c9f2fc024b72a5831801e6f32908fbc7b63edb5a",
+  "v8/test/wasm-js":
+    Var("chromium_url") + "/external/github.com/WebAssembly/spec.git" + "@" + "002e57c86ccf5c80db0de6e40246665340350c43",
 }
 
 deps_os = {
   "android": {
     "v8/third_party/android_tools":
-      Var("git_url") + "/android_tools.git" + "@" + "f4c36ad89b2696b37d9cd7ca7d984b691888b188",
+      Var("chromium_url") + "/android_tools.git" + "@" + "b43a6a289a7588b1769814f04dd6c7d7176974cc",
+    "v8/third_party/catapult":
+      Var('chromium_url') + "/external/github.com/catapult-project/catapult.git" + "@" + "9b8584120201e28d95740d0777e4f657b2139ff8",
   },
   "win": {
     "v8/third_party/cygwin":
-      Var("git_url") + "/chromium/deps/cygwin.git" + "@" + "c89e446b273697fadf3a10ff1007a97c0b7de6df",
+      Var("chromium_url") + "/chromium/deps/cygwin.git" + "@" + "c89e446b273697fadf3a10ff1007a97c0b7de6df",
   }
 }
+
+recursedeps = [
+  "v8/buildtools",
+  "v8/third_party/android_tools",
+]
 
 include_rules = [
   # Everybody can use some things.
@@ -53,6 +71,7 @@ include_rules = [
 # checkdeps.py shouldn't check for includes in these directories:
 skip_child_includes = [
   "build",
+  "gypfiles",
   "third_party",
 ]
 
@@ -65,7 +84,7 @@ hooks = [
     'pattern': '.',
     'action': [
         'python',
-        'v8/build/landmines.py',
+        'v8/gypfiles/landmines.py',
     ],
   },
   # Pull clang-format binaries using checked-in hashes.
@@ -187,6 +206,61 @@ hooks = [
     ],
   },
   {
+    "name": "wasm_fuzzer",
+    "pattern": ".",
+    "action": [ "download_from_google_storage",
+                "--no_resume",
+                "--no_auth",
+                "-u",
+                "--bucket", "v8-wasm-fuzzer",
+                "-s", "v8/test/fuzzer/wasm.tar.gz.sha1",
+    ],
+  },
+  {
+    "name": "wasm_asmjs_fuzzer",
+    "pattern": ".",
+    "action": [ "download_from_google_storage",
+                "--no_resume",
+                "--no_auth",
+                "-u",
+                "--bucket", "v8-wasm-asmjs-fuzzer",
+                "-s", "v8/test/fuzzer/wasm_asmjs.tar.gz.sha1",
+    ],
+  },
+  {
+    "name": "closure_compiler",
+    "pattern": ".",
+    "action": [ "download_from_google_storage",
+                "--no_resume",
+                "--no_auth",
+                "-u",
+                "--bucket", "chromium-v8-closure-compiler",
+                "-s", "v8/src/inspector/build/closure-compiler.tar.gz.sha1",
+    ],
+  },
+  {
+    # Downloads the current stable linux sysroot to build/linux/ if needed.
+    # This sysroot updates at about the same rate that the chrome build deps
+    # change.
+    'name': 'sysroot',
+    'pattern': '.',
+    'action': [
+        'python',
+        'v8/build/linux/sysroot_scripts/install-sysroot.py',
+        '--running-as-hook',
+    ],
+  },
+  {
+    # Pull sanitizer-instrumented third-party libraries if requested via
+    # GYP_DEFINES.
+    'name': 'instrumented_libraries',
+    'pattern': '\\.sha1',
+    'action': [
+        'python',
+        'v8/third_party/instrumented_libraries/scripts/download_binaries.py',
+    ],
+  },
+  {
     # Update the Windows toolchain if necessary.
     'name': 'win_toolchain',
     'pattern': '.',
@@ -208,7 +282,7 @@ hooks = [
     # Note: This must run before the clang update.
     'name': 'gold_plugin',
     'pattern': '.',
-    'action': ['python', 'v8/build/download_gold_plugin.py'],
+    'action': ['python', 'v8/gypfiles/download_gold_plugin.py'],
   },
   {
     # Pull clang if needed or requested via GYP_DEFINES.
@@ -220,6 +294,6 @@ hooks = [
   {
     # A change to a .gyp, .gypi, or to GYP itself should run the generator.
     "pattern": ".",
-    "action": ["python", "v8/build/gyp_v8"],
+    "action": ["python", "v8/gypfiles/gyp_v8", "--running-as-hook"],
   },
 ]

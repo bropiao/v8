@@ -74,6 +74,9 @@ namespace internal {
   V(xmm6)                   \
   V(xmm7)
 
+#define FLOAT_REGISTERS DOUBLE_REGISTERS
+#define SIMD128_REGISTERS DOUBLE_REGISTERS
+
 #define ALLOCATABLE_DOUBLE_REGISTERS(V) \
   V(xmm1)                               \
   V(xmm2)                               \
@@ -121,8 +124,6 @@ struct Register {
     Register r = {code};
     return r;
   }
-  const char* ToString();
-  bool IsAllocatable() const;
   bool is_valid() const { return 0 <= reg_code && reg_code < kNumRegisters; }
   bool is(Register reg) const { return reg_code == reg.reg_code; }
   int code() const {
@@ -146,8 +147,10 @@ GENERAL_REGISTERS(DECLARE_REGISTER)
 #undef DECLARE_REGISTER
 const Register no_reg = {Register::kCode_no_reg};
 
+static const bool kSimpleFPAliasing = true;
+static const bool kSimdMaskRegisters = false;
 
-struct DoubleRegister {
+struct XMMRegister {
   enum Code {
 #define REGISTER_CODE(R) kCode_##R,
     DOUBLE_REGISTERS(REGISTER_CODE)
@@ -158,12 +161,11 @@ struct DoubleRegister {
 
   static const int kMaxNumRegisters = Code::kAfterLast;
 
-  static DoubleRegister from_code(int code) {
-    DoubleRegister result = {code};
+  static XMMRegister from_code(int code) {
+    XMMRegister result = {code};
     return result;
   }
 
-  bool IsAllocatable() const;
   bool is_valid() const { return 0 <= reg_code && reg_code < kMaxNumRegisters; }
 
   int code() const {
@@ -171,22 +173,22 @@ struct DoubleRegister {
     return reg_code;
   }
 
-  bool is(DoubleRegister reg) const { return reg_code == reg.reg_code; }
-
-  const char* ToString();
+  bool is(XMMRegister reg) const { return reg_code == reg.reg_code; }
 
   int reg_code;
 };
+
+typedef XMMRegister FloatRegister;
+
+typedef XMMRegister DoubleRegister;
+
+typedef XMMRegister Simd128Register;
 
 #define DECLARE_REGISTER(R) \
   const DoubleRegister R = {DoubleRegister::kCode_##R};
 DOUBLE_REGISTERS(DECLARE_REGISTER)
 #undef DECLARE_REGISTER
 const DoubleRegister no_double_reg = {DoubleRegister::kCode_no_reg};
-
-typedef DoubleRegister Simd128Register;
-
-typedef DoubleRegister XMMRegister;
 
 enum Condition {
   // any value < 0 is considered no_condition
@@ -281,8 +283,14 @@ class Immediate BASE_EMBEDDED {
   bool is_int8() const {
     return -128 <= x_ && x_ < 128 && RelocInfo::IsNone(rmode_);
   }
+  bool is_uint8() const {
+    return v8::internal::is_uint8(x_) && RelocInfo::IsNone(rmode_);
+  }
   bool is_int16() const {
     return -32768 <= x_ && x_ < 32768 && RelocInfo::IsNone(rmode_);
+  }
+  bool is_uint16() const {
+    return v8::internal::is_uint16(x_) && RelocInfo::IsNone(rmode_);
   }
 
  private:
@@ -491,16 +499,10 @@ class Assembler : public AssemblerBase {
   inline static void set_target_address_at(
       Isolate* isolate, Address pc, Address constant_pool, Address target,
       ICacheFlushMode icache_flush_mode = FLUSH_ICACHE_IF_NEEDED);
-  static inline Address target_address_at(Address pc, Code* code) {
-    Address constant_pool = code ? code->constant_pool() : NULL;
-    return target_address_at(pc, constant_pool);
-  }
+  static inline Address target_address_at(Address pc, Code* code);
   static inline void set_target_address_at(
       Isolate* isolate, Address pc, Code* code, Address target,
-      ICacheFlushMode icache_flush_mode = FLUSH_ICACHE_IF_NEEDED) {
-    Address constant_pool = code ? code->constant_pool() : NULL;
-    set_target_address_at(isolate, pc, constant_pool, target);
-  }
+      ICacheFlushMode icache_flush_mode = FLUSH_ICACHE_IF_NEEDED);
 
   // Return the code target address at a call site from the return address
   // of that call in the instruction stream.
@@ -649,6 +651,16 @@ class Assembler : public AssemblerBase {
   // Exchange
   void xchg(Register dst, Register src);
   void xchg(Register dst, const Operand& src);
+  void xchg_b(Register reg, const Operand& op);
+  void xchg_w(Register reg, const Operand& op);
+
+  // Lock prefix
+  void lock();
+
+  // CompareExchange
+  void cmpxchg(const Operand& dst, Register src);
+  void cmpxchg_b(const Operand& dst, Register src);
+  void cmpxchg_w(const Operand& dst, Register src);
 
   // Arithmetics
   void adc(Register dst, int32_t imm32);
@@ -667,13 +679,18 @@ class Assembler : public AssemblerBase {
   void and_(const Operand& dst, Register src);
   void and_(const Operand& dst, const Immediate& x);
 
-  void cmpb(Register reg, int8_t imm8) { cmpb(Operand(reg), imm8); }
-  void cmpb(const Operand& op, int8_t imm8);
+  void cmpb(Register reg, Immediate imm8) { cmpb(Operand(reg), imm8); }
+  void cmpb(const Operand& op, Immediate imm8);
   void cmpb(Register reg, const Operand& op);
   void cmpb(const Operand& op, Register reg);
+  void cmpb(Register dst, Register src) { cmpb(Operand(dst), src); }
   void cmpb_al(const Operand& op);
   void cmpw_ax(const Operand& op);
-  void cmpw(const Operand& op, Immediate imm16);
+  void cmpw(const Operand& dst, Immediate src);
+  void cmpw(Register dst, Immediate src) { cmpw(Operand(dst), src); }
+  void cmpw(Register dst, const Operand& src);
+  void cmpw(Register dst, Register src) { cmpw(Operand(dst), src); }
+  void cmpw(const Operand& dst, Register src);
   void cmp(Register reg, int32_t imm32);
   void cmp(Register reg, Handle<Object> handle);
   void cmp(Register reg0, Register reg1) { cmp(reg0, Operand(reg1)); }
@@ -763,10 +780,18 @@ class Assembler : public AssemblerBase {
   void test(Register reg, const Immediate& imm);
   void test(Register reg0, Register reg1) { test(reg0, Operand(reg1)); }
   void test(Register reg, const Operand& op);
-  void test_b(Register reg, const Operand& op);
   void test(const Operand& op, const Immediate& imm);
-  void test_b(Register reg, uint8_t imm8);
-  void test_b(const Operand& op, uint8_t imm8);
+  void test(const Operand& op, Register reg) { test(reg, op); }
+  void test_b(Register reg, const Operand& op);
+  void test_b(Register reg, Immediate imm8);
+  void test_b(const Operand& op, Immediate imm8);
+  void test_b(const Operand& op, Register reg) { test_b(reg, op); }
+  void test_b(Register dst, Register src) { test_b(dst, Operand(src)); }
+  void test_w(Register reg, const Operand& op);
+  void test_w(Register reg, Immediate imm16);
+  void test_w(const Operand& op, Immediate imm16);
+  void test_w(const Operand& op, Register reg) { test_w(reg, op); }
+  void test_w(Register dst, Register src) { test_w(dst, Operand(src)); }
 
   void xor_(Register dst, int32_t imm32);
   void xor_(Register dst, Register src) { xor_(dst, Operand(src)); }
@@ -929,6 +954,9 @@ class Assembler : public AssemblerBase {
   void ucomiss(XMMRegister dst, XMMRegister src) { ucomiss(dst, Operand(src)); }
   void ucomiss(XMMRegister dst, const Operand& src);
   void movaps(XMMRegister dst, XMMRegister src);
+  void movups(XMMRegister dst, XMMRegister src);
+  void movups(XMMRegister dst, const Operand& src);
+  void movups(const Operand& dst, XMMRegister src);
   void shufps(XMMRegister dst, XMMRegister src, byte imm8);
 
   void maxss(XMMRegister dst, XMMRegister src) { maxss(dst, Operand(src)); }
@@ -1401,9 +1429,6 @@ class Assembler : public AssemblerBase {
     return pc_offset() - label->pos();
   }
 
-  // Mark generator continuation.
-  void RecordGeneratorContinuation();
-
   // Mark address of a debug break slot.
   void RecordDebugBreakSlot(RelocInfo::Mode mode);
 
@@ -1413,7 +1438,8 @@ class Assembler : public AssemblerBase {
 
   // Record a deoptimization reason that can be used by a log or cpu profiler.
   // Use --trace-deopt to enable.
-  void RecordDeoptReason(const int reason, int raw_position);
+  void RecordDeoptReason(DeoptimizeReason reason, SourcePosition position,
+                         int id);
 
   // Writes a single byte or word of data in the code stream.  Used for
   // inline tables, e.g., jump-tables.
@@ -1434,10 +1460,6 @@ class Assembler : public AssemblerBase {
   inline int available_space() const { return reloc_info_writer.pos() - pc_; }
 
   static bool IsNop(Address addr);
-
-  AssemblerPositionsRecorder* positions_recorder() {
-    return &positions_recorder_;
-  }
 
   int relocation_writer_size() {
     return (buffer_ + buffer_size_) - reloc_info_writer.pos();
@@ -1484,6 +1506,7 @@ class Assembler : public AssemblerBase {
                    RelocInfo::Mode rmode,
                    TypeFeedbackId id = TypeFeedbackId::None());
   inline void emit(const Immediate& x);
+  inline void emit_b(Immediate x);
   inline void emit_w(const Immediate& x);
   inline void emit_q(uint64_t x);
 
@@ -1543,9 +1566,6 @@ class Assembler : public AssemblerBase {
 
   // code generation
   RelocInfoWriter reloc_info_writer;
-
-  AssemblerPositionsRecorder positions_recorder_;
-  friend class AssemblerPositionsRecorder;
 };
 
 
